@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure ACI - CPU & Memory Stress Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #0078d4;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #0c5460;
+        }
+        
+        .control-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #0078d4;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #0078d4;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            min-width: 100px;
+            text-align: right;
+            color: #0078d4;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .quick-btn {
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #0078d4;
+            color: #0078d4;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .quick-btn:hover {
+            background: #0078d4;
+            color: white;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .apply-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .apply-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .stop-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .stop-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0078d4;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            color: #0078d4;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .status.idle {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.running {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.warning {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .process-memory {
+            background: #e7f3ff;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        
+        .process-memory strong {
+            color: #0078d4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔥 Azure ACI Stress Test</h1>
+            <p class="subtitle">Server-Side CPU & Memory Burner</p>
+        </div>
+        
+        <div class="info">
+            ✅ <strong>Server-Side Burning:</strong> Resources are consumed on the container, not your browser!
+        </div>
+        
+        <div class="warning">
+            ⚠️ <strong>ACI Limit:</strong> This container has 1.5 GiB (1536 MB) memory. Exceeding this will cause the container to restart.
+        </div>
+        
+        <div class="control-section">
+            <div class="section-title">💾 Memory Allocation</div>
+            <div class="control-group">
+                <label for="memorySize">Memory to Allocate on Server</label>
+                <div class="slider-container">
+                    <input type="range" id="memorySize" min="0" max="1500" value="0" step="100">
+                    <div class="value-display" id="memoryValue">0 MB</div>
+                </div>
+                <div class="quick-buttons">
+                    <button class="quick-btn" onclick="setMemory(0)">0 MB</button>
+                    <button class="quick-btn" onclick="setMemory(500)">500 MB</button>
+                    <button class="quick-btn" onclick="setMemory(1000)">1000 MB</button>
+                    <button class="quick-btn" onclick="setMemory(1200)">1200 MB</button>
+                    <button class="quick-btn" onclick="setMemory(1400)">1400 MB</button>
+                    <button class="quick-btn" onclick="setMemory(1500)">1500 MB</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="section-title">⚡ CPU Intensity</div>
+            <div class="control-group">
+                <label for="cpuBurners">Number of CPU Burners</label>
+                <div class="slider-container">
+                    <input type="range" id="cpuBurners" min="0" max="4" value="0" step="1">
+                    <div class="value-display" id="cpuValue">0 Burners</div>
+                </div>
+                <div class="quick-buttons">
+                    <button class="quick-btn" onclick="setCPU(0)">0 Burners</button>
+                    <button class="quick-btn" onclick="setCPU(1)">1 Burner</button>
+                    <button class="quick-btn" onclick="setCPU(2)">2 Burners</button>
+                    <button class="quick-btn" onclick="setCPU(4)">4 Burners</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="apply-btn" id="applyBtn">▶️ Apply Settings</button>
+            <button class="stop-btn" id="stopBtn">⏹️ Stop & Release All</button>
+        </div>
+        
+        <div class="status idle" id="status">💤 Idle - No resources allocated on server</div>
+        
+        <div class="stats">
+            <div class="section-title">📊 Server Resource Usage</div>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-label">CPU Burners</div>
+                    <div class="stat-value" id="activeBurners">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Allocated Memory</div>
+                    <div class="stat-value" id="memAllocated">0 MB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Memory Buffers</div>
+                    <div class="stat-value" id="bufferCount">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Uptime</div>
+                    <div class="stat-value" id="uptime">00:00:00</div>
+                </div>
+            </div>
+            
+            <div class="process-memory" id="processMemory">
+                <strong>Process Memory:</strong> Loading...
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const memorySlider = document.getElementById('memorySize');
+        const cpuSlider = document.getElementById('cpuBurners');
+        const memoryValue = document.getElementById('memoryValue');
+        const cpuValue = document.getElementById('cpuValue');
+        const applyBtn = document.getElementById('applyBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const activeBurnersDisplay = document.getElementById('activeBurners');
+        const memAllocatedDisplay = document.getElementById('memAllocated');
+        const bufferCountDisplay = document.getElementById('bufferCount');
+        const uptimeDisplay = document.getElementById('uptime');
+        const processMemoryDisplay = document.getElementById('processMemory');
+        
+        let statusInterval = null;
+        
+        // Update slider displays
+        memorySlider.addEventListener('input', (e) => {
+            memoryValue.textContent = `${e.target.value} MB`;
+        });
+        
+        cpuSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            cpuValue.textContent = value === '1' ? '1 Burner' : `${value} Burners`;
+        });
+        
+        // Quick set functions
+        function setMemory(mb) {
+            memorySlider.value = mb;
+            memoryValue.textContent = `${mb} MB`;
+        }
+        
+        function setCPU(burners) {
+            cpuSlider.value = burners;
+            cpuValue.textContent = burners === 1 ? '1 Burner' : `${burners} Burners`;
+        }
+        
+        // Format uptime
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        // Format bytes
+        function formatBytes(bytes) {
+            return (bytes / 1024 / 1024).toFixed(2);
+        }
+        
+        // Update status from server
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                activeBurnersDisplay.textContent = data.cpuBurners;
+                memAllocatedDisplay.textContent = `${data.memoryMB} MB`;
+                bufferCountDisplay.textContent = data.bufferCount;
+                uptimeDisplay.textContent = formatUptime(data.uptime);
+                
+                // Update process memory info
+                const mem = data.processMemory;
+                processMemoryDisplay.innerHTML = `
+                    <strong>Process Memory:</strong><br>
+                    RSS: ${formatBytes(mem.rss)} MB | 
+                    Heap Used: ${formatBytes(mem.heapUsed)} MB / ${formatBytes(mem.heapTotal)} MB | 
+                    External: ${formatBytes(mem.external)} MB
+                `;
+                
+                // Update status
+                if (data.cpuBurners > 0 || data.memoryMB > 0) {
+                    status.className = 'status running';
+                    let statusText = `🔥 Active - ${data.cpuBurners} CPU burner(s), ${data.memoryMB} MB allocated`;
+                    if (data.memoryMB >= 1400) {
+                        statusText += ' ⚠️ WARNING: Near memory limit!';
+                        status.className = 'status warning';
+                    }
+                    status.textContent = statusText;
+                } else {
+                    status.className = 'status idle';
+                    status.textContent = '💤 Idle - No resources allocated on server';
+                }
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+                status.className = 'status warning';
+                status.textContent = '⚠️ Error: Cannot connect to server';
+            }
+        }
+        
+        // Apply settings
+        applyBtn.addEventListener('click', async () => {
+            applyBtn.disabled = true;
+            const targetMemoryMB = parseInt(memorySlider.value);
+            const targetBurners = parseInt(cpuSlider.value);
+            
+            try {
+                // Set CPU burners
+                const cpuResponse = await fetch('/api/cpu', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ burners: targetBurners })
+                });
+                
+                if (!cpuResponse.ok) {
+                    throw new Error('Failed to set CPU burners');
+                }
+                
+                // Set memory
+                const memResponse = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ memoryMB: targetMemoryMB })
+                });
+                
+                if (!memResponse.ok) {
+                    const error = await memResponse.json();
+                    throw new Error(error.message || 'Failed to allocate memory');
+                }
+                
+                // Start status updates if not already running
+                if (!statusInterval) {
+                    statusInterval = setInterval(updateStatus, 1000);
+                }
+                
+                // Update immediately
+                await updateStatus();
+                
+            } catch (error) {
+                console.error('Error applying settings:', error);
+                status.className = 'status warning';
+                status.textContent = `⚠️ Error: ${error.message}`;
+            } finally {
+                applyBtn.disabled = false;
+            }
+        });
+        
+        // Stop and release all
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to stop');
+                }
+                
+                // Reset sliders
+                memorySlider.value = 0;
+                cpuSlider.value = 0;
+                memoryValue.textContent = '0 MB';
+                cpuValue.textContent = '0 Burners';
+                
+                // Update immediately
+                await updateStatus();
+                
+                // Stop status interval if nothing is running
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    statusInterval = null;
+                }
+                
+            } catch (error) {
+                console.error('Error stopping:', error);
+                status.className = 'status warning';
+                status.textContent = `⚠️ Error: ${error.message}`;
+            } finally {
+                stopBtn.disabled = false;
+            }
+        });
+        
+        // Initial status update
+        updateStatus();
+        
+        // Log startup
+        console.log('Azure ACI CPU & Memory Burner - Client Ready');
+        console.log('Server-side resource burning enabled');
+    </script>
+</body>
+</html>
