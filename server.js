@@ -220,6 +220,90 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
+// Global array to hold memory
+let memoryHog = [];
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Hello from Azure Container Instance!',
+    hostname: os.hostname(),
+    platform: os.platform(),
+    memoryUsage: process.memoryUsage(),
+    freeMemory: `${(os.freemem() / (1024**3)).toFixed(2)} GB`,
+    totalMemory: `${(os.totalmem() / (1024**3)).toFixed(2)} GB`
+  });
+});
+
+
+// CPU stress endpoint
+app.get('/stress-cpu', (req, res) => {
+  const duration = parseInt(req.query.duration) || 60;
+  res.json({ message: `CPU stress started for ${duration}s` });
+  
+  const start = Date.now();
+  const interval = setInterval(() => {
+    if (Date.now() - start > duration * 1000) {
+      clearInterval(interval);
+    } else {
+      for (let i = 0; i < 1000000; i++) {
+        Math.sqrt(Math.random());
+      }
+    }
+  }, 10);
+});
+
+// Memory stress endpoint - allocates memory progressively
+app.get('/stress-memory', (req, res) => {
+  const mbToAllocate = parseInt(req.query.mb) || 100;
+  
+  try {
+    // Allocate memory in chunks
+    for (let i = 0; i < mbToAllocate; i++) {
+      // Allocate 1MB (1024 * 1024 bytes)
+      const chunk = Buffer.alloc(1024 * 1024);
+      memoryHog.push(chunk);
+    }
+    
+    const memUsage = process.memoryUsage();
+    res.json({
+      message: `Allocated ${mbToAllocate} MB`,
+      totalAllocated: `${memoryHog.length} MB`,
+      heapUsed: `${(memUsage.heapUsed / (1024**2)).toFixed(2)} MB`,
+      rss: `${(memUsage.rss / (1024**2)).toFixed(2)} MB`,
+      external: `${(memUsage.external / (1024**2)).toFixed(2)} MB`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Memory allocation failed', message: error.message });
+  }
+});
+
+// Clear memory
+app.get('/clear-memory', (req, res) => {
+  const previousSize = memoryHog.length;
+  memoryHog = [];
+  global.gc && global.gc(); // Force garbage collection if enabled
+  
+  res.json({
+    message: 'Memory cleared',
+    freedMB: previousSize
+  });
+});
+
+// Get current memory status
+app.get('/memory-status', (req, res) => {
+  const memUsage = process.memoryUsage();
+  res.json({
+    allocatedMB: memoryHog.length,
+    heapUsed: `${(memUsage.heapUsed / (1024**2)).toFixed(2)} MB`,
+    heapTotal: `${(memUsage.heapTotal / (1024**2)).toFixed(2)} MB`,
+    rss: `${(memUsage.rss / (1024**2)).toFixed(2)} MB`,
+    external: `${(memUsage.external / (1024**2)).toFixed(2)} MB`,
+    freeSystemMemory: `${(os.freemem() / (1024**3)).toFixed(2)} GB`,
+    totalSystemMemory: `${(os.totalmem() / (1024**3)).toFixed(2)} GB`
+  });
+});
+
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`========================================`);
