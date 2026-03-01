@@ -63,14 +63,14 @@ app.post('/api/cpu', (req, res) => {
         // Add more burners
         const toAdd = burners - currentBurners;
         for (let i = 0; i < toAdd; i++) {
-            try {
+            // try {
                 const worker = new Worker(cpuWorkerCode, { eval: true });
                 cpuWorkers.push(worker);
                 console.log(`Started CPU burner ${cpuWorkers.length}`);
-            } catch (error) {
-                console.error('Failed to start CPU burner:', error);
-                return res.status(500).json({ error: 'Failed to start CPU burner' });
-            }
+            // } catch (error) {
+            //     console.error('Failed to start CPU burner:', error);
+            //     return res.status(500).json({ error: 'Failed to start CPU burner' });
+            // }
         }
     } else if (burners < currentBurners) {
         // Remove burners
@@ -256,8 +256,6 @@ app.get('/stress-cpu', (req, res) => {
 // Memory stress endpoint - allocates memory progressively
 app.get('/stress-memory', (req, res) => {
   const mbToAllocate = parseInt(req.query.mb) || 100;
-  
-  try {
     // Allocate memory in chunks
     for (let i = 0; i < mbToAllocate; i++) {
       // Allocate 1MB (1024 * 1024 bytes)
@@ -273,11 +271,6 @@ app.get('/stress-memory', (req, res) => {
       rss: `${(memUsage.rss / (1024**2)).toFixed(2)} MB`,
       external: `${(memUsage.external / (1024**2)).toFixed(2)} MB`
     });
-  } catch (error) {
-    console.error('Memory allocation error:', error);
-    res.status(500).json({ error: 'Memory allocation failed', message: error.message });
-
-  }
 });
 
 // Clear memory
