@@ -1,6 +1,7 @@
 const express = require('express');
 const { Worker } = require('worker_threads');
 const path = require('path');
+const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 80;
@@ -273,7 +274,9 @@ app.get('/stress-memory', (req, res) => {
       external: `${(memUsage.external / (1024**2)).toFixed(2)} MB`
     });
   } catch (error) {
+    console.error('Memory allocation error:', error);
     res.status(500).json({ error: 'Memory allocation failed', message: error.message });
+
   }
 });
 
